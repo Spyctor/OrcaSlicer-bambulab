@@ -199,6 +199,32 @@ jobs:
         shell: pwsh
         run: .\build_release_vs.bat slicer
 
+      - name: Assemble Windows WSL runtime package
+        shell: pwsh
+        run: |
+          $packageDir = "$env:GITHUB_WORKSPACE\build\OrcaSlicer"
+          $assembler = "$env:GITHUB_WORKSPACE\tools\pjarczak_bambu_runtime\release\assemble_windows_runtime_bundle.ps1"
+          $rootfs = "$env:GITHUB_WORKSPACE\tools\pjarczak_bambu_runtime\rootfs\windows-wsl2-rootfs.tar"
+          $runtimeDir = "$env:GITHUB_WORKSPACE\tools\pjarczak_bambu_linux_host\runtime\linux-x86_64"
+          $linuxHost = Join-Path $runtimeDir 'pjarczak_bambu_linux_host'
+
+          if (!(Test-Path $packageDir)) { throw "Package directory not found: $packageDir" }
+          & $assembler -OutputDir $packageDir -RootFs $rootfs -LinuxHostBinary $linuxHost -RuntimeDir $runtimeDir -DistroName 'PJARCZAK-BAMBU'
+
+          $required = @(
+            'pjarczak_bambu_networking_bridge.dll',
+            'install_runtime.ps1',
+            'verify_runtime.ps1',
+            'pjarczak_wsl_run_host.sh',
+            'pjarczak_bambu_linux_host',
+            'pjarczak_bambu_linux_host_abi1',
+            'pjarczak_bambu_linux_host_abi0',
+            'windows-wsl2-rootfs.tar'
+          )
+          foreach ($name in $required) {
+            $path = Join-Path $packageDir $name
+            if (!(Test-Path $path)) { throw "Missing packaged runtime file: $name" }
+          }
 
       - name: Ensure WSL is available for runtime validation
         shell: pwsh
