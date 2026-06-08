@@ -183,13 +183,29 @@ jobs:
         run: |
           choco install nsis -y
 
+      - name: Restore Windows deps cache
+        id: cache_windows_deps
+        uses: actions/cache/restore@v5
+        with:
+          path: ${{ github.workspace }}/deps/build/OrcaSlicer_dep
+          key: windows-cache-orcaslicer_deps-build-${{ hashFiles('deps/**') }}
+
       - name: Build Windows deps
+        if: ${{ steps.cache_windows_deps.outputs.cache-hit != 'true' }}
         working-directory: ${{ github.workspace }}
         env:
           WindowsSdkDir: 'C:\Program Files (x86)\Windows Kits\10\'
           WindowsSDKVersion: '10.0.26100.0\'
         shell: pwsh
         run: .\build_release_vs.bat deps
+
+      - name: Save Windows deps cache
+        if: ${{ steps.cache_windows_deps.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v5
+        continue-on-error: true
+        with:
+          path: ${{ github.workspace }}/deps/build/OrcaSlicer_dep
+          key: ${{ steps.cache_windows_deps.outputs.cache-primary-key }}
 
       - name: Build slicer Win
         working-directory: ${{ github.workspace }}
