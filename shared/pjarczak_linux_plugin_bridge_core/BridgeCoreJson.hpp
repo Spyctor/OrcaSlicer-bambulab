@@ -1,7 +1,7 @@
 #pragma once
 
 #include <nlohmann/json.hpp>
-#include "../../src/slic3r/Utils/bambu_networking.hpp"
+#include "BridgeBambuTypes.hpp"
 
 namespace Slic3r::PJarczakLinuxBridge::JsonBridge {
 

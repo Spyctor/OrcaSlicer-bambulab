@@ -2,7 +2,6 @@
 
 #include "../../shared/pjarczak_linux_plugin_bridge_core/BridgeCoreJson.hpp"
 #include "../../shared/pjarczak_linux_plugin_bridge_core/BridgeAuthPayload.hpp"
-#include "../../src/slic3r/Utils/bambu_networking.hpp"
 #include "../../src/slic3r/GUI/Printer/BambuTunnel.h"
 #include "../../src/slic3r/Utils/PJarczakLinuxBridge/PJarczakLinuxBridgeCompat.hpp"
 #include "../../src/slic3r/Utils/PJarczakLinuxBridge/PJarczakLinuxBridgeConfig.hpp"

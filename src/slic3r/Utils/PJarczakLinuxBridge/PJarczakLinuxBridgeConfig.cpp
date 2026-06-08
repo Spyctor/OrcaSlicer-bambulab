@@ -11,7 +11,9 @@
 #include <boost/filesystem/path.hpp>
 #include <openssl/sha.h>
 #include <nlohmann/json.hpp>
+#if !defined(PJARCZAK_LINUX_BRIDGE_STANDALONE_HOST)
 #include "../bambu_networking.hpp"
+#endif
 
 namespace Slic3r::PJarczakLinuxBridge {
 
@@ -375,7 +377,11 @@ std::string sha256_file_hex(const std::string& file_path, std::string* reason)
 
 std::string expected_network_abi_version()
 {
+#if defined(PJARCZAK_LINUX_BRIDGE_STANDALONE_HOST)
+    return env_or("PJARCZAK_EXPECTED_BAMBU_NETWORK_VERSION", "02.03.00.62");
+#else
     return env_or("PJARCZAK_EXPECTED_BAMBU_NETWORK_VERSION", get_latest_network_version());
+#endif
 }
 
 bool abi_version_matches_expected(const std::string& actual_version, std::string* reason)

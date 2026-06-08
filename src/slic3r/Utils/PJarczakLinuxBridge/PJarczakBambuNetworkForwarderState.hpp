@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../bambu_networking.hpp"
+#include "../../../../shared/pjarczak_linux_plugin_bridge_core/BridgeBambuTypes.hpp"
 #include "../../GUI/Printer/BambuTunnel.h"
 #include "PJarczakLinuxBridgeCompat.hpp"
 
