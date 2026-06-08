@@ -8,6 +8,44 @@
 
 namespace Slic3r {
 
+#define BAMBU_NETWORK_SUCCESS                           0
+#define BAMBU_NETWORK_ERR_INVALID_HANDLE                -1
+#define BAMBU_NETWORK_ERR_CONNECT_FAILED                -2
+#define BAMBU_NETWORK_ERR_DISCONNECT_FAILED             -3
+#define BAMBU_NETWORK_ERR_SEND_MSG_FAILED               -4
+#define BAMBU_NETWORK_ERR_BIND_FAILED                   -5
+#define BAMBU_NETWORK_ERR_UNBIND_FAILED                 -6
+#define BAMBU_NETWORK_ERR_REQUEST_SETTING_FAILED        -7
+#define BAMBU_NETWORK_ERR_PUT_SETTING_FAILED            -8
+#define BAMBU_NETWORK_ERR_GET_SETTING_LIST_FAILED       -9
+#define BAMBU_NETWORK_ERR_DEL_SETTING_FAILED            -10
+#define BAMBU_NETWORK_ERR_GET_USER_PRINTINFO_FAILED     -11
+#define BAMBU_NETWORK_ERR_QUERY_BIND_INFO_FAILED        -12
+#define BAMBU_NETWORK_ERR_MODIFY_PRINTER_NAME_FAILED    -13
+#define BAMBU_NETWORK_ERR_FILE_NOT_EXIST                -14
+#define BAMBU_NETWORK_ERR_FILE_OVER_SIZE                -15
+#define BAMBU_NETWORK_ERR_CHECK_MD5_FAILED              -16
+#define BAMBU_NETWORK_ERR_TIMEOUT                       -17
+#define BAMBU_NETWORK_ERR_CANCELED                      -18
+#define BAMBU_NETWORK_ERR_INVALID_RESULT                -19
+#define BAMBU_NETWORK_ERR_FTP_UPLOAD_FAILED             -20
+#define BAMBU_NETWORK_ERR_GET_RATING_ID_FAILED          -21
+#define BAMBU_NETWORK_ERR_OPEN_FILE_FAILED              -22
+#define BAMBU_NETWORK_ERR_PARSE_CONFIG_FAILED           -23
+#define BAMBU_NETWORK_ERR_NO_CORRESPONDING_BUCKET       -24
+#define BAMBU_NETWORK_ERR_GET_INSTANCE_ID_FAILED        -25
+#define BAMBU_NETWORK_SIGNED_ERROR                      -26
+
+#define BAMBU_NETWORK_ERR_BIND_CREATE_SOCKET_FAILED          -1010
+#define BAMBU_NETWORK_ERR_BIND_SOCKET_CONNECT_FAILED         -1020
+#define BAMBU_NETWORK_ERR_BIND_PUBLISH_LOGIN_REQUEST         -1030
+#define BAMBU_NETWORK_ERR_BIND_GET_PRINTER_TICKET_TIMEOUT    -1040
+#define BAMBU_NETWORK_ERR_BIND_GET_CLOUD_TICKET_TIMEOUT      -1050
+#define BAMBU_NETWORK_ERR_BIND_POST_TICKET_TO_CLOUD_FAILED   -1060
+#define BAMBU_NETWORK_ERR_BIND_PARSE_LOGIN_REPORT_FAILED     -1070
+#define BAMBU_NETWORK_ERR_BIND_ECODE_LOGIN_REPORT_FAILED     -1080
+#define BAMBU_NETWORK_ERR_BIND_RECEIVE_LOGIN_REPORT_TIMEOUT  -1090
+
 typedef std::function<void(std::string topic_str)> OnPrinterConnectedFn;
 typedef std::function<void(int status, std::string dev_id, std::string msg)> OnLocalConnectedFn;
 typedef std::function<void(int return_code, int reason_code)> OnServerConnectedFn;
@@ -24,6 +62,17 @@ typedef std::function<void(int progress)> ProgressFn;
 typedef std::function<bool(std::map<std::string, std::string> info)> CheckFn;
 typedef std::function<void(std::string url, int status)> OnServerErrFn;
 typedef std::function<void(int online_login, bool login)> OnUserLoginFn;
+
+struct detectResult {
+    std::string result_msg;
+    std::string command;
+    std::string dev_id;
+    std::string model_id;
+    std::string dev_name;
+    std::string version;
+    std::string bind_state;
+    std::string connect_type;
+};
 
 struct PrintParams {
     std::string dev_id;
