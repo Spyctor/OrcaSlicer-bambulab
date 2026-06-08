@@ -3,7 +3,7 @@ set -euo pipefail
 
 PACKAGE_DIR=""
 PLUGIN_DIR=""
-PLUGIN_CACHE_DIR=""
+_PLUGIN_CACHE_DIR=""
 ALLOW_MISSING_LINUX_PLUGIN=0
 
 while [[ $# -gt 0 ]]; do
@@ -17,7 +17,7 @@ while [[ $# -gt 0 ]]; do
             shift 2
             ;;
         -PluginCacheDir)
-            PLUGIN_CACHE_DIR="${2:-}"
+            _PLUGIN_CACHE_DIR="${2:-}"
             shift 2
             ;;
         -AllowMissingLinuxPlugin)
@@ -110,6 +110,7 @@ check_lima_payload_mount() {
         slicer_base64.cer
     )
 
+    # shellcheck disable=SC2016
     if ! "$LIMACTL" shell "$INSTANCE" -- /usr/bin/env PJARCZAK_MAC_RUNTIME_DIR="$RUNTIME_DIR" /bin/sh -lc '
 for file do
     if [ ! -e "$PJARCZAK_MAC_RUNTIME_DIR/$file" ]; then
