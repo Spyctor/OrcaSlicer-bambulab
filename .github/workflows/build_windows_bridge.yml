@@ -2,12 +2,37 @@ name: Build Windows with Linux bridge runtime
 
 on:
   workflow_call:
+    inputs:
+      artifact_run_id:
+        required: false
+        type: string
+        default: ''
+      artifact_sha:
+        required: false
+        type: string
+        default: ''
   workflow_dispatch:
+    inputs:
+      artifact_run_id:
+        description: 'Existing run id containing linux_host_runtime and wsl_rootfs artifacts. Leave blank to rebuild them.'
+        required: false
+        type: string
+        default: ''
+      artifact_sha:
+        description: 'Commit SHA used in the existing artifact names. Required when artifact_run_id is set.'
+        required: false
+        type: string
+        default: ''
+
+env:
+  BRIDGE_ARTIFACT_RUN_ID: ${{ inputs.artifact_run_id || github.run_id }}
+  BRIDGE_ARTIFACT_SHA: ${{ inputs.artifact_sha || github.sha }}
 
 jobs:
   prepare_linux_bridge_runtime:
     name: Prepare Linux bridge runtime
     runs-on: ubuntu-24.04
+    if: ${{ inputs.artifact_run_id == '' }}
 
     steps:
       - name: Checkout
@@ -78,6 +103,7 @@ jobs:
     name: Build Windows
     runs-on: windows-latest
     needs: prepare_linux_bridge_runtime
+    if: ${{ always() && (inputs.artifact_run_id != '' || needs.prepare_linux_bridge_runtime.result == 'success') }}
     env:
       ORCA_UPDATER_SIG_KEY: ${{ secrets.ORCA_UPDATER_SIG_KEY }}
 
@@ -86,6 +112,12 @@ jobs:
         uses: actions/checkout@v6
         with:
           lfs: 'false'
+
+      - name: Validate reused bridge artifact inputs
+        if: ${{ inputs.artifact_run_id != '' && inputs.artifact_sha == '' }}
+        shell: pwsh
+        run: |
+          throw 'artifact_sha is required when artifact_run_id is set because bridge artifact names include the source commit SHA.'
 
       - uses: lukka/get-cmake@latest
         with:
@@ -116,28 +148,32 @@ jobs:
       - name: Download linux host runtime artifact
         uses: actions/download-artifact@v8
         with:
-          name: linux_host_runtime_${{ github.sha }}
+          name: linux_host_runtime_${{ env.BRIDGE_ARTIFACT_SHA }}
           path: ${{ github.workspace }}/linux_host_runtime_artifact
+          run-id: ${{ env.BRIDGE_ARTIFACT_RUN_ID }}
+          github-token: ${{ github.token }}
 
       - name: Extract linux host runtime artifact on Windows
         working-directory: ${{ github.workspace }}
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path "$env:GITHUB_WORKSPACE\tools\pjarczak_bambu_linux_host\runtime" | Out-Null
-          tar -xzf "$env:GITHUB_WORKSPACE\linux_host_runtime_artifact\linux_host_runtime_${{ github.sha }}.tar.gz" -C "$env:GITHUB_WORKSPACE\tools\pjarczak_bambu_linux_host\runtime"
+          tar -xzf "$env:GITHUB_WORKSPACE\linux_host_runtime_artifact\linux_host_runtime_${{ env.BRIDGE_ARTIFACT_SHA }}.tar.gz" -C "$env:GITHUB_WORKSPACE\tools\pjarczak_bambu_linux_host\runtime"
 
       - name: Download WSL rootfs artifact
         uses: actions/download-artifact@v8
         with:
-          name: wsl_rootfs_${{ github.sha }}
+          name: wsl_rootfs_${{ env.BRIDGE_ARTIFACT_SHA }}
           path: ${{ github.workspace }}/wsl_rootfs_artifact
+          run-id: ${{ env.BRIDGE_ARTIFACT_RUN_ID }}
+          github-token: ${{ github.token }}
 
       - name: Extract WSL rootfs artifact on Windows
         working-directory: ${{ github.workspace }}
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path "$env:GITHUB_WORKSPACE\tools\pjarczak_bambu_runtime\rootfs" | Out-Null
-          tar -xzf "$env:GITHUB_WORKSPACE\wsl_rootfs_artifact\wsl_rootfs_${{ github.sha }}.tar.gz" -C "$env:GITHUB_WORKSPACE\tools\pjarczak_bambu_runtime\rootfs"
+          tar -xzf "$env:GITHUB_WORKSPACE\wsl_rootfs_artifact\wsl_rootfs_${{ env.BRIDGE_ARTIFACT_SHA }}.tar.gz" -C "$env:GITHUB_WORKSPACE\tools\pjarczak_bambu_runtime\rootfs"
 
       - name: setup MSVC
         uses: microsoft/setup-msbuild@v2

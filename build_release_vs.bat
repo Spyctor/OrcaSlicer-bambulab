@@ -99,7 +99,7 @@ echo build type set to %build_type%
 
 setlocal DISABLEDELAYEDEXPANSION 
 cd deps
-mkdir %build_dir%
+if not exist "%build_dir%" mkdir "%build_dir%"
 cd %build_dir%
 set "SIG_FLAG="
 if defined ORCA_UPDATER_SIG_KEY set "SIG_FLAG=-DORCA_UPDATER_SIG_KEY=%ORCA_UPDATER_SIG_KEY%"
@@ -114,10 +114,14 @@ REM Set minimum CMake policy to avoid <3.5 errors
 set CMAKE_POLICY_VERSION_MINIMUM=3.5
 if "%USE_NINJA%"=="1" (
     cmake ../ -G %CMAKE_GENERATOR% -DCMAKE_BUILD_TYPE=%build_type%
+    if errorlevel 1 exit /b %errorlevel%
     cmake --build . --config %build_type% --target deps
+    if errorlevel 1 exit /b %errorlevel%
 ) else (
     cmake ../ -G %CMAKE_GENERATOR% -A x64 -DCMAKE_BUILD_TYPE=%build_type%
+    if errorlevel 1 exit /b %errorlevel%
     cmake --build . --config %build_type% --target deps -- -m
+    if errorlevel 1 exit /b %errorlevel%
 )
 @echo off
 
@@ -126,23 +130,29 @@ if "%1"=="deps" goto :done
 :slicer
 echo "building Orca Slicer..."
 cd %WP%
-mkdir %build_dir%
+if not exist "%build_dir%" mkdir "%build_dir%"
 cd %build_dir%
 
 echo on
 set CMAKE_POLICY_VERSION_MINIMUM=3.5
 if "%USE_NINJA%"=="1" (
     cmake .. -G %CMAKE_GENERATOR% -DORCA_TOOLS=ON %SIG_FLAG% -DCMAKE_BUILD_TYPE=%build_type%
+    if errorlevel 1 exit /b %errorlevel%
     cmake --build . --config %build_type% --target ALL_BUILD
+    if errorlevel 1 exit /b %errorlevel%
 ) else (
     cmake .. -G %CMAKE_GENERATOR% -A x64 -DORCA_TOOLS=ON %SIG_FLAG% -DCMAKE_BUILD_TYPE=%build_type%
+    if errorlevel 1 exit /b %errorlevel%
     cmake --build . --config %build_type% --target ALL_BUILD -- -m
+    if errorlevel 1 exit /b %errorlevel%
 )
 @echo off
 cd ..
 call scripts/run_gettext.bat
+if errorlevel 1 exit /b %errorlevel%
 cd %build_dir%
 cmake --build . --target install --config %build_type%
+if errorlevel 1 exit /b %errorlevel%
 
 :done
 @echo off
