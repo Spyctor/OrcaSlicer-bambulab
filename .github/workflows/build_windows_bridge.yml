@@ -337,10 +337,13 @@ jobs:
         run: |
           $pluginDir = "$env:APPDATA\OrcaSlicer\plugins"
 
+          # NOTE: libbambu_networking.so / libBambuSource.so are the proprietary
+          # Bambu plugin libs. They are NOT bundled at build time - OrcaSlicer
+          # downloads them at runtime into the plugin cache dir on first use, and
+          # the bridge picks them up from there. So they are intentionally absent
+          # in CI and must not be required here (matches FULU's approach).
           $required = @(
             "pjarczak_bambu_networking_bridge.dll",
-            "libbambu_networking.so",
-            "libBambuSource.so",
             "pjarczak_bambu_linux_host",
             "pjarczak_bambu_linux_host_abi0",
             "pjarczak_bambu_linux_host_abi1",
@@ -376,9 +379,13 @@ jobs:
       - name: Validate live Orca plugin dir bootstrap package
         shell: pwsh
         run: |
+          # -AllowMissingLinuxPlugin: the proprietary libbambu_networking.so /
+          # libBambuSource.so are downloaded by OrcaSlicer at runtime, not present
+          # in CI, so the verifier must tolerate their absence (matches FULU).
           & "$env:APPDATA\OrcaSlicer\plugins\verify_runtime.ps1" `
             -PackageDir "$env:APPDATA\OrcaSlicer\plugins" `
-            -PluginCacheDir "$env:APPDATA\OrcaSlicer\ota\plugins"
+            -PluginCacheDir "$env:APPDATA\OrcaSlicer\ota\plugins" `
+            -AllowMissingLinuxPlugin
 
       - name: Create installer Win
         working-directory: ${{ github.workspace }}/build
