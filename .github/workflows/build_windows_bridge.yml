@@ -243,12 +243,38 @@ jobs:
             'pjarczak_bambu_linux_host',
             'pjarczak_bambu_linux_host_abi1',
             'pjarczak_bambu_linux_host_abi0',
-            'windows-wsl2-rootfs.tar'
+            'windows-wsl2-rootfs.tar',
+            'ca-certificates.crt'
           )
           foreach ($name in $required) {
             $path = Join-Path $packageDir $name
             if (!(Test-Path $path)) { throw "Missing packaged runtime file: $name" }
           }
+
+      - name: Create installer Win
+        working-directory: ${{ github.workspace }}/build
+        shell: pwsh
+        run: |
+          cpack -G NSIS
+
+      - name: Pack app
+        working-directory: ${{ github.workspace }}/build
+        shell: cmd
+        run: '"C:/Program Files/7-Zip/7z.exe" a -tzip OrcaSlicer_Windows_${{ env.ver }}_portable.zip ${{ github.workspace }}/build/OrcaSlicer'
+
+      - name: Upload artifacts Win portable
+        uses: actions/upload-artifact@v7
+        with:
+          name: OrcaSlicer_Windows_${{ env.ver }}_portable
+          path: ${{ github.workspace }}/build/OrcaSlicer_Windows_${{ env.ver }}_portable.zip
+          if-no-files-found: error
+
+      - name: Upload artifacts Win installer
+        uses: actions/upload-artifact@v7
+        with:
+          name: OrcaSlicer_Windows_${{ env.ver }}_installer
+          path: ${{ github.workspace }}/build/OrcaSlicer*.exe
+          if-no-files-found: error
 
       - name: Ensure WSL is available for runtime validation
         shell: pwsh
@@ -296,28 +322,3 @@ jobs:
         shell: pwsh
         run: |
           & "$env:APPDATA\OrcaSlicer\plugins\verify_runtime.ps1" -PackageDir "$env:APPDATA\OrcaSlicer\plugins" -PluginCacheDir "$env:APPDATA\OrcaSlicer\ota\plugins" -AllowMissingLinuxPlugin
-
-      - name: Create installer Win
-        working-directory: ${{ github.workspace }}/build
-        shell: pwsh
-        run: |
-          cpack -G NSIS
-
-      - name: Pack app
-        working-directory: ${{ github.workspace }}/build
-        shell: cmd
-        run: '"C:/Program Files/7-Zip/7z.exe" a -tzip OrcaSlicer_Windows_${{ env.ver }}_portable.zip ${{ github.workspace }}/build/OrcaSlicer'
-
-      - name: Upload artifacts Win portable
-        uses: actions/upload-artifact@v7
-        with:
-          name: OrcaSlicer_Windows_${{ env.ver }}_portable
-          path: ${{ github.workspace }}/build/OrcaSlicer_Windows_${{ env.ver }}_portable.zip
-          if-no-files-found: error
-
-      - name: Upload artifacts Win installer
-        uses: actions/upload-artifact@v7
-        with:
-          name: OrcaSlicer_Windows_${{ env.ver }}_installer
-          path: ${{ github.workspace }}/build/OrcaSlicer*.exe
-          if-no-files-found: error
