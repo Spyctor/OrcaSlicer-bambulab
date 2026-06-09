@@ -45,20 +45,26 @@ Set-Content -Path (Join-Path $OutputDir 'pjarczak_wsl_distro.txt') -Value ($Dist
 Copy-Item -Force $RootFs (Join-Path $OutputDir 'windows-wsl2-rootfs.tar')
 Copy-Item -Force $LinuxHostBinary (Join-Path $OutputDir 'pjarczak_bambu_linux_host')
 
-$caCertOutput = Join-Path $OutputDir 'ca-certificates.crt'
-$caCertTempDir = Join-Path ([System.IO.Path]::GetTempPath()) ("pjarczak-ca-cert-" + [System.Guid]::NewGuid().ToString("N"))
-try {
-    New-Item -ItemType Directory -Force -Path $caCertTempDir | Out-Null
-    & tar -xf $RootFs -C $caCertTempDir 'etc/ssl/certs/ca-certificates.crt'
-    if ($LASTEXITCODE -ne 0) { throw "Failed to extract ca-certificates.crt from rootfs: $RootFs" }
+$caCertEntries = (& tar -tf $RootFs 2>$null | Where-Object { $_ -match '(^|/)etc/ssl/certs/ca-certificates\.crt$' })
+if ($caCertEntries) {
+    $caCertEntry = @($caCertEntries)[0]
+    $caCertOutput = Join-Path $OutputDir 'ca-certificates.crt'
+    $caCertTempDir = Join-Path ([System.IO.Path]::GetTempPath()) ("pjarczak-ca-cert-" + [System.Guid]::NewGuid().ToString("N"))
+    try {
+        New-Item -ItemType Directory -Force -Path $caCertTempDir | Out-Null
+        & tar -xf $RootFs -C $caCertTempDir $caCertEntry
+        if ($LASTEXITCODE -ne 0) { throw "Failed to extract ca-certificates.crt from rootfs: $RootFs" }
 
-    $caCertSource = Join-Path $caCertTempDir 'etc/ssl/certs/ca-certificates.crt'
-    if (!(Test-Path $caCertSource)) { throw "Rootfs is missing etc/ssl/certs/ca-certificates.crt: $RootFs" }
-    Copy-Item -Force $caCertSource $caCertOutput
-} finally {
-    if (Test-Path $caCertTempDir) {
-        Remove-Item -Recurse -Force $caCertTempDir
+        $caCertSource = Join-Path $caCertTempDir $caCertEntry
+        if (!(Test-Path $caCertSource)) { throw "Rootfs is missing $caCertEntry after extraction: $RootFs" }
+        Copy-Item -Force $caCertSource $caCertOutput
+    } finally {
+        if (Test-Path $caCertTempDir) {
+            Remove-Item -Recurse -Force $caCertTempDir
+        }
     }
+} else {
+    Write-Host 'Rootfs does not include ca-certificates.crt; runtime will use distro certificate paths.'
 }
 
 if ($BridgeDll) {

@@ -329,7 +329,6 @@ $requiredFiles = @(
     'install_runtime.ps1',
     'verify_runtime.ps1',
     'windows-wsl2-rootfs.tar',
-    'ca-certificates.crt',
     'slicer_base64.cer'
 )
 

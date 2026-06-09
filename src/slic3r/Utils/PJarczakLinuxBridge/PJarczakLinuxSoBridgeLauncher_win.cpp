@@ -368,7 +368,7 @@ std::filesystem::path resolve_bootstrap_script_path(const std::filesystem::path&
 
 std::string first_missing_runtime_file(const std::filesystem::path& plugin_dir)
 {
-    const std::array<std::string, 10> required_files = {{
+    const std::array<std::string, 9> required_files = {{
         host_executable_file_name(),
         std::string("pjarczak_bambu_linux_host_abi1"),
         std::string("pjarczak_bambu_linux_host_abi0"),
@@ -377,7 +377,6 @@ std::string first_missing_runtime_file(const std::filesystem::path& plugin_dir)
         windows_wsl_distro_file_name(),
         windows_wsl_rootfs_file_name(),
         windows_plugin_cache_subdir_file_name(),
-        std::string("ca-certificates.crt"),
         std::string("slicer_base64.cer")
     }};
 
