@@ -75,6 +75,14 @@ jobs:
         run: |
           cmake --build build --config Release --target pjarczak_bambu_linux_host
           bash tools/pjarczak_bambu_linux_host/package_linux_host_runtime.sh build
+
+          if [ ! -f /etc/ssl/certs/ca-certificates.crt ]; then
+            echo "Missing system CA bundle at /etc/ssl/certs/ca-certificates.crt"
+            exit 1
+          fi
+
+          cp /etc/ssl/certs/ca-certificates.crt tools/pjarczak_bambu_linux_host/runtime/linux-x86_64/ca-certificates.crt
+
           bash tools/pjarczak_bambu_runtime/rootfs/build_windows_wsl_rootfs.sh tools/pjarczak_bambu_runtime/rootfs/windows-wsl2-rootfs.tar
           tar -czvf linux_host_runtime_${{ github.sha }}.tar.gz -C tools/pjarczak_bambu_linux_host/runtime linux-x86_64
           tar -czvf wsl_rootfs_${{ github.sha }}.tar.gz -C tools/pjarczak_bambu_runtime/rootfs windows-wsl2-rootfs.tar
@@ -257,30 +265,44 @@ jobs:
           path: ${{ github.workspace }}/build/OrcaSlicer
           if-no-files-found: error
 
-      - name: Create installer Win
-        working-directory: ${{ github.workspace }}/build
+      - name: Validate portable bridge runtime files
         shell: pwsh
         run: |
-          cpack -G NSIS
+          $pkg = "$env:GITHUB_WORKSPACE\build\OrcaSlicer"
 
-      - name: Pack app
-        working-directory: ${{ github.workspace }}/build
-        shell: cmd
-        run: '"C:/Program Files/7-Zip/7z.exe" a -tzip OrcaSlicer_Windows_${{ env.ver }}_portable.zip ${{ github.workspace }}/build/OrcaSlicer'
+          $required = @(
+            "pjarczak_bambu_networking_bridge.dll",
+            "pjarczak_bambu_linux_host",
+            "pjarczak_bambu_linux_host_abi0",
+            "pjarczak_bambu_linux_host_abi1",
+            "pjarczak_wsl_run_host.sh",
+            "pjarczak_wsl_distro.txt",
+            "pjarczak_plugin_cache_subdir.txt",
+            "windows-wsl2-rootfs.tar",
+            "slicer_base64.cer",
+            "ca-certificates.crt",
+            "install_runtime.ps1",
+            "verify_runtime.ps1"
+          )
 
-      - name: Upload artifacts Win portable
-        uses: actions/upload-artifact@v7
-        with:
-          name: OrcaSlicer_Windows_${{ env.ver }}_portable
-          path: ${{ github.workspace }}/build/OrcaSlicer_Windows_${{ env.ver }}_portable.zip
-          if-no-files-found: error
+          foreach ($name in $required) {
+            $path = Join-Path $pkg $name
+            if (!(Test-Path $path)) {
+              throw "Missing portable bridge runtime file: $name"
+            }
 
-      - name: Upload artifacts Win installer
-        uses: actions/upload-artifact@v7
-        with:
-          name: OrcaSlicer_Windows_${{ env.ver }}_installer
-          path: ${{ github.workspace }}/build/OrcaSlicer*.exe
-          if-no-files-found: error
+            $item = Get-Item $path
+            if ($item.Length -eq 0) {
+              throw "Portable bridge runtime file is empty: $name"
+            }
+          }
+
+          $cert = Join-Path $pkg "ca-certificates.crt"
+          if ((Get-Item $cert).Length -lt 100000) {
+            throw "Portable ca-certificates.crt exists but looks too small"
+          }
+
+          Write-Host "Portable bridge runtime files OK"
 
       - name: Ensure WSL is available for runtime validation
         shell: pwsh
@@ -318,13 +340,83 @@ jobs:
       - name: Show live Orca plugin dir after installer
         shell: pwsh
         run: |
+          Write-Host "Plugin dir:"
           Get-ChildItem -Force "$env:APPDATA\OrcaSlicer\plugins" | Format-Table Name, Length -AutoSize
+
           Write-Host "--- cache dir ---"
           if (Test-Path "$env:APPDATA\OrcaSlicer\ota\plugins") {
             Get-ChildItem -Force "$env:APPDATA\OrcaSlicer\ota\plugins" | Format-Table Name, Length -AutoSize
           }
 
+      - name: Validate installed bridge runtime files
+        shell: pwsh
+        run: |
+          $pluginDir = "$env:APPDATA\OrcaSlicer\plugins"
+
+          $required = @(
+            "pjarczak_bambu_networking_bridge.dll",
+            "libbambu_networking.so",
+            "libBambuSource.so",
+            "pjarczak_bambu_linux_host",
+            "pjarczak_bambu_linux_host_abi0",
+            "pjarczak_bambu_linux_host_abi1",
+            "pjarczak_wsl_run_host.sh",
+            "pjarczak_wsl_distro.txt",
+            "pjarczak_plugin_cache_subdir.txt",
+            "windows-wsl2-rootfs.tar",
+            "slicer_base64.cer",
+            "ca-certificates.crt",
+            "install_runtime.ps1",
+            "verify_runtime.ps1"
+          )
+
+          foreach ($name in $required) {
+            $path = Join-Path $pluginDir $name
+            if (!(Test-Path $path)) {
+              throw "Missing installed bridge runtime file: $name"
+            }
+
+            $item = Get-Item $path
+            if ($item.Length -eq 0) {
+              throw "Installed bridge runtime file is empty: $name"
+            }
+          }
+
+          $cert = Join-Path $pluginDir "ca-certificates.crt"
+          if ((Get-Item $cert).Length -lt 100000) {
+            throw "Installed ca-certificates.crt exists but looks too small"
+          }
+
+          Write-Host "Installed bridge runtime files OK"
+
       - name: Validate live Orca plugin dir bootstrap package
         shell: pwsh
         run: |
-          & "$env:APPDATA\OrcaSlicer\plugins\verify_runtime.ps1" -PackageDir "$env:APPDATA\OrcaSlicer\plugins" -PluginCacheDir "$env:APPDATA\OrcaSlicer\ota\plugins" -AllowMissingLinuxPlugin
+          & "$env:APPDATA\OrcaSlicer\plugins\verify_runtime.ps1" `
+            -PackageDir "$env:APPDATA\OrcaSlicer\plugins" `
+            -PluginCacheDir "$env:APPDATA\OrcaSlicer\ota\plugins"
+
+      - name: Create installer Win
+        working-directory: ${{ github.workspace }}/build
+        shell: pwsh
+        run: |
+          cpack -G NSIS
+
+      - name: Pack app
+        working-directory: ${{ github.workspace }}/build
+        shell: cmd
+        run: '"C:/Program Files/7-Zip/7z.exe" a -tzip OrcaSlicer_Windows_${{ env.ver }}_portable.zip ${{ github.workspace }}/build/OrcaSlicer'
+
+      - name: Upload artifacts Win portable
+        uses: actions/upload-artifact@v7
+        with:
+          name: OrcaSlicer_Windows_${{ env.ver }}_portable
+          path: ${{ github.workspace }}/build/OrcaSlicer_Windows_${{ env.ver }}_portable.zip
+          if-no-files-found: error
+
+      - name: Upload artifacts Win installer
+        uses: actions/upload-artifact@v7
+        with:
+          name: OrcaSlicer_Windows_${{ env.ver }}_installer
+          path: ${{ github.workspace }}/build/OrcaSlicer*.exe
+          if-no-files-found: error
