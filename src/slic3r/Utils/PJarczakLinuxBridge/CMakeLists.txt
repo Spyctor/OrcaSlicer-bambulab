@@ -23,7 +23,7 @@ if (WIN32)
     )
     target_include_directories(pjarczak_bambu_networking_bridge PRIVATE ${PJARCZAK_LINUX_BRIDGE_INCLUDE_DIRS})
     target_compile_definitions(pjarczak_bambu_networking_bridge PRIVATE PJARCZAK_LINUX_BRIDGE_LIGHTWEIGHT_TASKS=1 BAMBU_EXPORTS)
-    target_link_libraries(pjarczak_bambu_networking_bridge PRIVATE boost_headeronly boost_libs Eigen3::Eigen OpenSSL::Crypto)
+    target_link_libraries(pjarczak_bambu_networking_bridge PRIVATE boost_headeronly boost_libs Eigen3::Eigen TBB::tbb TBB::tbbmalloc OpenSSL::Crypto)
 elseif (APPLE)
     add_library(pjarczak_bambu_networking_bridge SHARED
         ${PJARCZAK_LINUX_BRIDGE_COMMON_SOURCES}
@@ -31,14 +31,14 @@ elseif (APPLE)
     )
     target_include_directories(pjarczak_bambu_networking_bridge PRIVATE ${PJARCZAK_LINUX_BRIDGE_INCLUDE_DIRS})
     target_compile_definitions(pjarczak_bambu_networking_bridge PRIVATE PJARCZAK_LINUX_BRIDGE_LIGHTWEIGHT_TASKS=1)
-    target_link_libraries(pjarczak_bambu_networking_bridge PRIVATE boost_headeronly boost_libs Eigen3::Eigen OpenSSL::Crypto)
+    target_link_libraries(pjarczak_bambu_networking_bridge PRIVATE boost_headeronly boost_libs Eigen3::Eigen TBB::tbb TBB::tbbmalloc OpenSSL::Crypto)
 else()
     add_library(pjarczak_bambu_networking_bridge SHARED
         ${PJARCZAK_LINUX_BRIDGE_COMMON_SOURCES}
         ${CMAKE_CURRENT_LIST_DIR}/PJarczakLinuxSoBridgeLauncher_linux.cpp
     )
     target_include_directories(pjarczak_bambu_networking_bridge PRIVATE ${PJARCZAK_LINUX_BRIDGE_INCLUDE_DIRS})
-    target_link_libraries(pjarczak_bambu_networking_bridge PRIVATE boost_headeronly boost_libs Eigen3::Eigen OpenSSL::Crypto)
+    target_link_libraries(pjarczak_bambu_networking_bridge PRIVATE boost_headeronly boost_libs Eigen3::Eigen TBB::tbb TBB::tbbmalloc OpenSSL::Crypto)
 endif()
 
 set_target_properties(pjarczak_bambu_networking_bridge PROPERTIES
