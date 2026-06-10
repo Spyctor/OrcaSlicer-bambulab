@@ -8,6 +8,7 @@
 #include "MsgDialog.hpp"
 #include "DownloadProgressDialog.hpp"
 #include "slic3r/Utils/NetworkAgent.hpp"
+#include "slic3r/Utils/PJarczakLinuxBridge/PJarczakLinuxBridgeConfig.hpp"
 
 
 #include <boost/lexical_cast.hpp>
@@ -158,6 +159,20 @@ void MediaPlayCtrl::SetMachineObject(MachineObject* obj)
         m_remote_proto   = obj->get_liveview_remote();
         m_lan_ip         = obj->get_dev_ip();
         m_lan_passwd     = obj->get_access_code();
+        // FULU bridge: SSDP discovery is multicast and may not reach through WSL,
+        // so dev_ip can be empty even when the printer advertises a LAN rtsp_url.
+        // Recover the host from local_rtsp_url so the LAN liveview URL can be built.
+        if (m_lan_ip.empty() && Slic3r::PJarczakLinuxBridge::enabled() && !obj->local_rtsp_url.empty()) {
+            const std::string& rurl = obj->local_rtsp_url;
+            auto p = rurl.find("://");
+            if (p != std::string::npos) {
+                std::string host = rurl.substr(p + 3);
+                auto e = host.find_first_of(":/");
+                if (e != std::string::npos) host = host.substr(0, e);
+                if (!host.empty() && host != "disable")
+                    m_lan_ip = host;
+            }
+        }
         m_device_busy    = obj->is_camera_busy_off();
         m_tutk_state     = obj->tutk_state;
 
@@ -286,8 +301,14 @@ void MediaPlayCtrl::Play()
     BOOST_LOG_TRIVIAL(info) << "MediaPlayCtrl::Play: " << m_lan_proto << m_remote_proto << m_disable_lan;
     NetworkAgent *agent = wxGetApp().getAgent();
     std::string  agent_version = agent ? agent->get_version() : "";
-    if (m_lan_proto > MachineObject::LVL_Disable && (m_lan_mode || !m_remote_proto) && !m_disable_lan && !m_lan_ip.empty()) {
-        m_disable_lan = m_remote_proto && !m_lan_mode; // try remote next time
+    // FULU bridge: the cloud go-live (tutk/agora) path is not usable through the
+    // bridge for newer Bambu printers (e.g. X2D), whose cloud camera is brtc-only
+    // and returns 403. When a LAN liveview stream (rtsps/rtsp/local) is available,
+    // prefer it instead of falling through to the failing cloud path. Reuses
+    // libBambuSource's native RTSPS support - no brtc/proprietary p2p needed.
+    const bool pj_prefer_lan = Slic3r::PJarczakLinuxBridge::enabled();
+    if (m_lan_proto > MachineObject::LVL_Disable && (m_lan_mode || !m_remote_proto || pj_prefer_lan) && !m_disable_lan && !m_lan_ip.empty()) {
+        m_disable_lan = m_remote_proto && !m_lan_mode && !pj_prefer_lan; // try remote next time (not when bridge prefers LAN)
         std::string url;
         if (m_lan_proto == MachineObject::LVL_Local)
             url = "bambu:///local/" + m_lan_ip + ".?port=6000&user=" + m_lan_user + "&passwd=" + m_lan_passwd;
