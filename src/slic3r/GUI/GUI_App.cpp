@@ -3301,6 +3301,14 @@ bool GUI_App::on_init_network(bool try_backup)
         }
     }
 
+    // FULU bridge: switch_printer_agent() is otherwise only triggered on preset/tab
+    // changes, so on a fresh launch the BBL printer agent is never set and device
+    // status (publish_json) returns -1 until the user selects a Bambu preset. With
+    // the bridge active, establish the BBL printer agent now that m_agent is started.
+    if (m_agent && Slic3r::PJarczakLinuxBridge::enabled()) {
+        switch_printer_agent();
+    }
+
     if (!should_load_networking_plugin) {
         int result = Slic3r::NetworkAgent::unload_network_module();
         BOOST_LOG_TRIVIAL(info) << "on_init_network, unload_network_module, result = " << result;
@@ -3356,7 +3364,14 @@ void GUI_App::switch_printer_agent()
     // Read printer_agent from config, falling back to default
     std::string effective_agent_id = ORCA_PRINTER_AGENT_ID;
     std::string cloud_agent_id = ORCA_CLOUD_PROVIDER;
-    if (preset_bundle->is_bbl_vendor()) {
+    if (Slic3r::PJarczakLinuxBridge::enabled()) {
+        // FULU bridge connects only to Bambu printers via the BBL network plugin.
+        // Force the BBL printer agent regardless of the selected slicing preset's
+        // vendor; otherwise device status (MQTT) has no printer agent and every
+        // publish returns -1 until a Bambu preset happens to be selected.
+        effective_agent_id = BBL_PRINTER_AGENT_ID;
+        cloud_agent_id = BBL_CLOUD_PROVIDER;
+    } else if (preset_bundle->is_bbl_vendor()) {
         effective_agent_id = BBL_PRINTER_AGENT_ID;
         cloud_agent_id = BBL_CLOUD_PROVIDER;
     } else {
